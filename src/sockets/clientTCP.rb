@@ -4,11 +4,11 @@ require 'base64'
 class ClientTCP
 
     attr_reader :port
-    attr_reader :host
+    attr_reader :ip
 
-    def initialize(host, port)
-        @socket = TCPSocket.open(host, port)
-        @host   = @socket.addr[2]
+    def initialize(ip, port)
+        @socket = TCPSocket.open(ip, port)
+        @ip   = @socket.addr[2]
         @port   = @socket.addr[1]
     end
 
@@ -20,6 +20,10 @@ class ClientTCP
     def read_message
         message_encoded = @socket.gets
         return Base64.decode64(message_encoded)
+    end
+
+    def close
+        @socket.close
     end
 
 end

@@ -1,7 +1,6 @@
 require 'net/http'
 require 'uri'
 require 'json'
-require 'pry-byebug'
 
 module QueryHTTP
 
@@ -15,10 +14,12 @@ module QueryHTTP
             uri = URI.parse(url)
             res = Net::HTTP.post_form(uri, params)
         end
+        code = res.code
         response = JSON.parse(res.body) if res != nil
 		response = symbolize_recursive(response)
-		return {
-			:status => res.code,
+
+        return {
+			:status => code,
 			:body 	=> response
 		}
 

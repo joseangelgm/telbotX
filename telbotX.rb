@@ -29,4 +29,6 @@ Logger::log_message :info, "Config from bot.yaml", config
 
 Logger::log_message :info, "Launching elements..."
 
-updater = Updater.new("#{config[:bot_url]}#{config[:bot_token]}")
+updater = Updater.new("#{config[:bot_url]}#{config[:bot_token]}", "127.0.0.1", 14000)
+thread_update = Thread.new {updater.run}
+thread_update.join
