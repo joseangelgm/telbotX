@@ -18,21 +18,28 @@ module Logger
     MAX_SIZE = 1024000 #Kilobytes
     LOG_FILE = 'telbotX.log'
 
-    def log_message(level, title, message=nil)
-        f = File.open(LOG_FILE, File::RDWR|File::APPEND|File::CREAT, 0644)
-        #f1.flock(File::LOCK_EX|File::LOCK_NB) -> to not block when the lock is taken
-        f.flock(File::LOCK_EX)
-        if message.nil? || message.empty?
-            f.write("#{Time.now.strftime("%d/%m/%Y %H:%M:%S")} #{level}: #{title}\n")
-        else
-            message = format_message(message)
-            f.write("#{Time.now.strftime("%d/%m/%Y %H:%M:%S")} #{level}: #{title}\n#{message}")
+    def log_message(mode, title, message=nil)
+        begin
+            f = File.open(LOG_FILE, File::RDWR|File::APPEND|File::CREAT, 0644)
+            #f1.flock(File::LOCK_EX|File::LOCK_NB) -> to not block when the lock is taken
+            f.flock(File::LOCK_EX)
+            if message.nil? || message.empty?
+                f.write("#{Time.now.strftime("%d/%m/%Y %H:%M:%S")} #{mode}: #{title}\n")
+            else
+                message = format_message(message)
+                f.write("#{Time.now.strftime("%d/%m/%Y %H:%M:%S")} #{mode}: #{title}\n#{message}")
+            end
+        rescue Exception => e
+            #format_message(e)
+        ensure
+            if !f.nil?
+                f.flock(File::LOCK_UN)
+                f.close
+            end
         end
-        f.flock(File::LOCK_UN)
-        f.close
     end
 
-    def create_log_file_if_new_day
+    def create_log_file_if_necessary
 
         current_time = Time.new
 
@@ -57,6 +64,8 @@ module Logger
             message.each do |elem|
                 message_formatted << "\t#{elem}\n"
             end
+        when Exception;
+            message_formatted = "Exception type: #{message.class}, message #{message.message}"
         else;
             message_formatted = message
         end
