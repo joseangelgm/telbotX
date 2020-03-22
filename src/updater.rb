@@ -1,4 +1,4 @@
-#because is launched from telbotx.rb the paths are like following.
+#because is launched from updaterLauncher.rb the paths are like following.
 require 'sockets/clientTCP'
 
 require 'modules/logger'
@@ -33,7 +33,7 @@ class Updater
             log_message(:info, "Command #{GET_UPDATES}", message)
 
             commands.each do |command|
-                log_message(:info, "Command #{command[:message][:text]} commando ejecutandose..")
+                log_message(:info, "Command #{command[:message][:text]} executing command TEST..")
                 sleep 2
             end
             sleep 5
