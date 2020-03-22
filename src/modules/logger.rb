@@ -16,14 +16,14 @@ If the file doesn’t exist:
 module Logger
 
     MAX_SIZE = 1024000 #Kilobytes
-    LOG_FILE = 'telbotX.log'
+    LOG_FILE = "/tmp/telbotX.log"
 
     def log_message(mode, title, message=nil)
         begin
             f = File.open(LOG_FILE, File::RDWR|File::APPEND|File::CREAT, 0644)
             #f1.flock(File::LOCK_EX|File::LOCK_NB) -> to not block when the lock is taken
             f.flock(File::LOCK_EX)
-            if message.nil? || message.empty?
+            if message.nil?
                 f.write("#{Time.now.strftime("%d/%m/%Y %H:%M:%S")} #{mode}: #{title}\n")
             else
                 message = format_message(message)
@@ -65,9 +65,9 @@ module Logger
                 message_formatted << "\t#{elem}\n"
             end
         when Exception;
-            message_formatted = "Exception type: #{message.class}, message #{message.message}"
+            message_formatted = "\tException type: #{message.class}, message #{message.message}\n"
         else;
-            message_formatted = message
+            message_formatted = "#{message}\n"
         end
         message_formatted
     end
