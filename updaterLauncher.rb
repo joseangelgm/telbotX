@@ -34,11 +34,11 @@ num_retry = 1
 launched  = false
 updater   = nil
 exception = nil
-
+updater = Updater.new("#{config[:bot_url]}#{config[:bot_token]}", updater_config[:ip], updater_config[:port])
 while !launched && num_retry <= updater_config[:retries]
     begin
         Logger::log_message :info, "Attemp #{num_retry} trying launch updater"
-        updater = Updater.new("#{config[:bot_url]}#{config[:bot_token]}", updater_config[:ip], updater_config[:port])
+        updater.create_socket
         launched = true
     rescue Exception => e
         num_retry += 1

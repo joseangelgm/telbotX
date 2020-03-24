@@ -14,12 +14,17 @@ class Updater
 
     def initialize(bot_url, ip, port)
         @bot_url = "#{bot_url}/#{GET_UPDATES}"
-        @socket  = ClientTCP.new ip, port
+        @ip      = ip
+        @port    = port
+    end
+
+    def create_socket
+        @socket  = ClientTCP.new @ip, @port
         log_message(:info, "Updater create socket on #{@socket.ip} ip, port #{@socket.port}")
     end
 
     def run
-
+        # make this loop with condition to stop
         loop {
 
             response = make_query(@bot_url, :post, {})
