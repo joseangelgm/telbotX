@@ -1,2 +1,7 @@
 :ip: "127.0.0.1"
 :port: 15000
+
+#retries to connect to sched
+:retries: 2
+#secons
+:time_to_wait: 2
