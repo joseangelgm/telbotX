@@ -2,7 +2,7 @@
 
 $LOAD_PATH << __dir__ + '/src/'
 
-STDIN.close #we only wil write through the pipe
+STDIN.close #we only will write through the pipe
 
 require 'modules/fileUtils'
 require 'modules/logger'
@@ -13,9 +13,8 @@ include FileUtils
 begin
     require 'yaml'
     require 'updater'
-    Logger::log_message :info, "Libraries and code needed for updater imported properly..."
+    Logger::log_message :info, "Libraries and code needed for updater were required properly..."
 rescue Exception => e
-    # review with new implementation
     Logger::log_message :error, "Libraries needed for updater could not be found...Sutting down:", e
     exit 1
 end
@@ -32,7 +31,6 @@ Logger::log_message :info, "Config for updater", updater_config
 
 num_retry = 1
 launched  = false
-updater   = nil
 exception = nil
 updater = Updater.new("#{config[:bot_url]}#{config[:bot_token]}", updater_config[:ip], updater_config[:port])
 while !launched && num_retry <= updater_config[:retries]
@@ -53,7 +51,7 @@ if !launched
     STDOUT.close
     exit 1
 end
-thread_update = Thread.new {updater.run}
+
 STDOUT.puts "{:exit => 0}"
 STDOUT.close
 thread_update = Thread.new { updater.run }
