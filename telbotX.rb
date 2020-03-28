@@ -10,17 +10,35 @@ include Logger
 require 'optparse'
 require 'timeout'
 
-VERSION_NUMBER     = "1.0"
+DEBUG = false
+
+VERSION_NUMBER = "1.0"
 
 LOCATION_PID_FILES = "/tmp/"
-UPDATER_PID_FILE   = "updaterTelbotX.pid"
-SCHED_PID_FILE     = "schedTelbotX.pid"
+UPDATER_PID_FILE   = "#{LOCATION_PID_FILES}updaterTelbotX.pid"
+SCHED_PID_FILE     = "#{LOCATION_PID_FILES}schedTelbotX.pid"
 
-UPDATER_EXE        = "#{__dir__}/updaterLauncher.rb"
-SCHED_EXE          = "#{__dir__}/schedLauncher.rb"
+UPDATER_EXE = "#{__dir__}/updaterLauncher.rb"
+SCHED_EXE   = "#{__dir__}/schedLauncher.rb"
 
-TIMEOUT_UPDATER = 10 #seconds
+UPDATER_TIMEOUT = 10 #seconds
+SCHED_TIMEOUT   = 15 #seconds
 
+UPDATER_ELEM = {
+    :name     => "Updater",
+    :exe      => UPDATER_EXE,
+    :pid_file => UPDATER_PID_FILE,
+    :timeout  => UPDATER_TIMEOUT
+}
+
+SCHED_ELEM = {
+    :name     => "Sched",
+    :exe      => SCHED_EXE,
+    :pid_file => SCHED_PID_FILE,
+    :timeout  => SCHED_TIMEOUT
+}
+
+# command
 UPDATER = {
     :short => "-u",
     :large => "--updater",
@@ -52,17 +70,19 @@ HELP = {
     :help  => "Display this help",
 }
 
-def format_param_structure(param)
+def format_param_structure(params)
 
     array_params = []
 
-    case param
+    case params
     when Hash;
-        param.each do |k, v|
+        params.each do |k, v|
             array_params << v
         end
+    when Array;
+        array_params = params
     else
-        puts "#{param} could be recognize to format"
+        puts "Parameters could be recognize to format"
         exit 1
     end
     array_params
@@ -73,82 +93,79 @@ def command(optparse, param, &block)
     optparse.on(*format_param_structure(param), block)
 end
 
-def create_pid_file(elem, pid)
-    path_file = nil
-    if elem == :sched
-        path_file = "#{LOCATION_PID_FILES}#{SCHED_PID_FILE}"
-    elsif elem == :updater
-        path_file = "#{LOCATION_PID_FILES}#{UPDATER_PID_FILE}"
-    else
-        return nil
-    end
+def create_pid_file(path_file, pid)
     File.open(path_file, 'w') do |f|
         f.write(pid)
     end
 end
 
-def check_if_process_launched(elem)
-    launched = false
-    if elem == :sched
-        launched = File.file?(SCHED_FILE)
-    elsif elem == :updater
-        launched = File.file?(UPDATER_FILE)
-    end
-    launched
+def check_if_process_launched(pid_file)
+    # check in that way is not exactly correct
+    return File.file?(pid_file)
 end
 
-def kill_process(elem)
-    path_file = nil
-    if :updater
-        path_file = "#{LOCATION_PID_FILES}#{UPDATER_PID_FILE}"
-    elsif :sched
-        path_file = "#{LOCATION_PID_FILES}#{SCHED_PID_FILE}"
-    else
-        return nil
-    end
-
+def kill_process(pid_file)
     pid_to_kill = nil
-    File.open(path_file, 'r') do |f|
-        f.each_line do |line|
-            pid_to_kill = line
+    if File.file? pid_file
+        File.open(pid_file, 'r') do |f|
+            f.each_line do |line|
+                pid_to_kill = line
+            end
         end
+
+        pid = Process.spawn "kill -9 #{pid_to_kill}; rm #{pid_file}"
+        puts "#{pid_file} killed"
+        Process.wait pid
+        Logger::log_message :info, "#{pid_file} killed"
+    else
+        puts "#{pid_file} doesnt exists"
     end
-    puts "Killing #{elem}"
-    pid = Process.spawn "kill -9 #{pid_to_kill}"
 end
 
-def launch_updater
-    Logger::log_message :info, "Launching updater..."
-    puts "Launching Updater..."
-    # create a pipe
-    reader, writer = IO.pipe
-    # flush automatically
-    writer.sync = true
-    pid = Process.spawn UPDATER_EXE, :out=>writer
-    # dont let the process zombie
-    Process.detach pid
-    writer.close # not write
-    create_pid_file :updater, pid
-
-    response = nil
-    begin
-        Timeout::timeout(TIMEOUT_UPDATER) do
-            response = reader.gets # until we receive data from subprocess
-        end
-    rescue Exception => e # Timeout reached
-        puts "Shutting down due to reach updater timeout"
-        kill_process :updater
-        exit 1
-    ensure
-        reader.close
-    end
-
-    response = eval(response) # response to hashmap
-    if response[:exit] != 0
-        puts "Failing launching updater...Shutting down"
-        exit response[:exit]
+# element => hashmap
+# block => if we have to launch something after
+def launch_element(element, &block)
+    binding.pry if DEBUG
+    if check_if_process_launched element[:pid_file]
+        puts "#{element[:name]} already launched"
+        block.call if block_given?
     else
-        puts "Updater launched"
+        Logger::log_message :info, "Launching #{element[:name]}..."
+        puts "Launching #{element[:name]}..."
+        # create a pipe
+        reader, writer = IO.pipe
+        # flush automatically
+        writer.sync = true
+        pid = Process.spawn element[:exe], :out=>writer
+        # dont let the process zombie
+        Process.detach pid
+        writer.close # not write
+        create_pid_file element[:pid_file], pid
+        response = nil
+        begin
+            Timeout::timeout(element[:timeout]) do
+                response = reader.gets # until we receive data from subprocess
+            end
+        rescue Exception => e # Timeout reached
+            puts "Shutting down due to reach #{element[:name]} timeout"
+            kill_process element[:pid_file]
+        ensure
+            reader.close
+        end
+
+        if !response.nil?
+            response = eval(response)# transform response to hashmap
+            if response[:exit] != 0
+                puts "Failing launching #{element[:name]}...Shutting down"
+                exit 1
+            else
+                puts "#{element[:name]} launched"
+                block.call if block_given?
+            end
+        else
+            puts "Failing launching #{element[:name]}...Shutting down"
+            exit 1
+        end
     end
 end
 
@@ -163,14 +180,28 @@ command optparse, SCHED do
     options[:sched] = true
 end
 
-command optparse, POWEROFF do |m|
-    binding.pry
-    if m.nil?
+command optparse, POWEROFF do |elements|
+    if elements.nil?
         puts "You have to provide what elems you want to poweroff..."
         puts optparse
         exit 1
     else
-        options[:elems] = m
+        options[:poweroff] = []
+        elements.each do |elem|
+            case elem.downcase
+            when 's', 'sched'
+                options[:poweroff].unshift SCHED_ELEM[:pid_file]
+            when 'u', 'updater'
+                options[:poweroff] << UPDATER_ELEM[:pid_file]
+            else
+                puts "Invalid option #{elem}"
+                puts optparse
+                exit 1
+            end
+        end
+        options[:poweroff].each do |pid_file|
+            kill_process pid_file
+        end
     end
 end
 
@@ -193,17 +224,13 @@ else
     if options[:sched] || options[:updater]
         #move log file and create new one if it is needed
         Logger::create_log_file_if_necessary
-
-        # if lauch sched, then we have to launch updater
-        # if not launch updater only
+        Logger::log_message :info, "Starting telBotX. Version #{VERSION_NUMBER}"
         if options[:sched]
-            puts "Launch sched"
-            #launch sched
-            if options[:updater]
+            launch_element SCHED_ELEM do
+                launch_element UPDATER_ELEM
             end
-        end
-        if options[:updater]
-            launch_updater
+        elsif options[:updater]
+            launch_element UPDATER_ELEM
         end
     end
 end

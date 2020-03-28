@@ -40,10 +40,8 @@ module Logger
     end
 
     def create_log_file_if_necessary
-
-        current_time = Time.new
-
         if File.file?(LOG_FILE)
+            current_time = Time.new
             stats = File.stat(LOG_FILE)
             if stats.size >= MAX_SIZE || (stats.ctime.day != current_time.day)
                 File.rename(LOG_FILE, "#{LOG_FILE}.#{current_time.year}-#{current_time.month}-#{current_time.day}")
