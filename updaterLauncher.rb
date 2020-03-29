@@ -54,5 +54,15 @@ end
 
 STDOUT.puts "{:exit => 0}"
 STDOUT.close
-thread_update = Thread.new { updater.run }
-thread_update.join # wait until thread_update finish
+
+# SIGINT = 2
+trap("SIGINT") do
+    signal_thread = Thread.new do
+        log_message(:info, "Receive SIGINT")
+        updater.poweroff_socket
+    end
+    signal_thread.join
+end
+
+main_thread = Thread.new { updater.run }
+main_thread.join
