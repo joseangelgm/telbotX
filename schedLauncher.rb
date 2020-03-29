@@ -51,5 +51,5 @@ end
 
 STDOUT.puts "{:exit => 0}"
 STDOUT.close
-thread_update = Thread.new { sched.run }
-thread_update.join # wait until thread_update finish
+
+sched.run
