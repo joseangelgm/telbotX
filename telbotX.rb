@@ -1,16 +1,17 @@
-#!/usr/bin/env ruby
+#!/usr/bin/ruby
 
 require 'pry-byebug'
 
 $LOAD_PATH << __dir__ + '/src/'
 
 require 'modules/logger'
+require 'modules/dataUtils'
 include Logger
+include DataUtils
 
 require 'optparse'
 require 'timeout'
-
-DEBUG = false
+require 'open3'
 
 VERSION_NUMBER = "1.0"
 
@@ -101,7 +102,25 @@ end
 
 def check_if_process_launched(pid_file)
     # check in that way is not exactly correct
-    return File.file?(pid_file)
+    if File.file?(pid_file)
+        pid_to_check = nil
+        File.open(pid_file, 'r') do |f|
+            f.each_line do |line|
+                pid_to_check = line
+            end
+        end
+        stdout, stderr, status = Open3.capture3("ps -p #{pid_to_check}")
+        if status.exitstatus == 0
+            return true
+        else
+            if !stderr.empty?
+                puts "An error ocurred when killing process in #{pid_file} #{stderr}"
+                exit 1
+            end
+        end
+    else
+        return false
+    end
 end
 
 def kill_process(pid_file)
@@ -113,10 +132,17 @@ def kill_process(pid_file)
             end
         end
 
-        pid = Process.spawn "kill -9 #{pid_to_kill}; rm #{pid_file}"
-        puts "#{pid_file} killed"
-        Process.wait pid
-        Logger::log_message :info, "#{pid_file} killed"
+        stdout, stderr, status = Open3.capture3("kill -s SIGINT #{pid_to_kill}")
+        if status.exitstatus == 0
+            puts "#{pid_file} killed"
+            Logger::log_message :info, "#{pid_file} killed"
+            %x{rm #{pid_file}}
+        else
+            if !stderr.empty?
+                puts "There was a problem killin process #{pid_to_kill} #{stderr}"
+                exit 1
+            end
+        end
     else
         puts "#{pid_file} doesnt exists"
     end
@@ -125,13 +151,10 @@ end
 # element => hashmap
 # block => if we have to launch something after
 def launch_element(element, &block)
-    binding.pry if DEBUG
     if check_if_process_launched element[:pid_file]
         puts "#{element[:name]} already launched"
         block.call if block_given?
     else
-        Logger::log_message :info, "Launching #{element[:name]}..."
-        puts "Launching #{element[:name]}..."
         # create a pipe
         reader, writer = IO.pipe
         # flush automatically
@@ -140,6 +163,8 @@ def launch_element(element, &block)
         # dont let the process zombie
         Process.detach pid
         writer.close # not write
+        Logger::log_message :info, "#{element[:name]} launched. PID #{pid}"
+        puts "#{element[:name]} launched. PID #{pid}"
         create_pid_file element[:pid_file], pid
         response = nil
         begin
@@ -154,12 +179,11 @@ def launch_element(element, &block)
         end
 
         if !response.nil?
-            response = eval(response)# transform response to hashmap
+            response = DataUtils::eval_to_hashmap response # transform response to hashmap
             if response[:exit] != 0
                 puts "Failing launching #{element[:name]}...Shutting down"
                 exit 1
             else
-                puts "#{element[:name]} launched"
                 block.call if block_given?
             end
         else
