@@ -4,7 +4,9 @@ require 'json'
 
 module QueryHTTP
 
-  def make_query(url, http_method, params)
+    extend self
+
+    def make_query(url, http_method, params)
 		res = nil
         if http_method == :get then
         	uri = URI(url)
@@ -14,15 +16,18 @@ module QueryHTTP
             uri = URI.parse(url)
             res = Net::HTTP.post_form(uri, params)
         end
-        code = res.code
-        response = JSON.parse(res.body) if res != nil
-		response = symbolize_recursive(response)
+        if !res.nil?
+            code = res.code
+            response = JSON.parse(res.body) if res != nil
+            response = symbolize_recursive(response)
 
-        return {
-			:status => code,
-			:body 	=> response
-		}
-
+            return {
+                :status => code,
+                :body 	=> response
+            }
+        else
+            return nil
+        end
     end
 
     def symbolize_recursive(hash)
