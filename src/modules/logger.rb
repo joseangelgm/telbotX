@@ -13,22 +13,28 @@ If the file doesn’t exist:
     File::CREAT -> Create
 =end
 
+#f1.flock(File::LOCK_EX|File::LOCK_NB) -> to not block when the lock is taken
+
 module Logger
 
     MAX_SIZE = 1024000 #Kilobytes
     LOG_FILE = "/tmp/telbotX.log"
+    TIME_FORMAT = "%d/%m/%Y %H:%M:%S"
 
     def log_message(mode, title, message=nil)
         begin
             f = File.open(LOG_FILE, File::RDWR|File::APPEND|File::CREAT, 0644)
-            #f1.flock(File::LOCK_EX|File::LOCK_NB) -> to not block when the lock is taken
             f.flock(File::LOCK_EX)
-            if message.nil?
-                f.write("#{Time.now.strftime("%d/%m/%Y %H:%M:%S")} #{mode}: #{title}\n")
-            else
-                message = format_message(message)
-                f.write("#{Time.now.strftime("%d/%m/%Y %H:%M:%S")} #{mode}: #{title}\n#{message}")
-            end
+
+            message_hash = {
+                :time          => Time.now.strftime(TIME_FORMAT),
+                :caller_object => caller.first.scan(/\/\w+/).last.tr('/',''),
+                :mode          => mode,
+                :title         => title,
+                :message       => format_message(message)
+            }
+            message_format = "%{time} %{caller_object} %{mode}: %{title}\n%{message}" % message_hash
+            f.write(message_format)
         rescue Exception => e
             #format_message(e)
         ensure
@@ -64,6 +70,8 @@ module Logger
             end
         when Exception;
             message_formatted = "\tException type: #{message.class}, message #{message.message}\n"
+        when nil;
+            message_formatted = ""
         else;
             message_formatted = "#{message}\n"
         end
