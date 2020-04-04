@@ -249,10 +249,12 @@ else
         #move log file and create new one if it is needed
         Logger::create_log_file_if_necessary
         Logger::log_message :info, "Starting telBotX. Version #{VERSION_NUMBER}"
-        if options[:sched]
+        if options[:sched] && options[:updater]
             launch_element SCHED_ELEM do
                 launch_element UPDATER_ELEM
             end
+        elsif options[:sched]
+            launch_element SCHED_ELEM
         elsif options[:updater]
             launch_element UPDATER_ELEM
         end
