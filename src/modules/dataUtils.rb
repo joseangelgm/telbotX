@@ -13,10 +13,10 @@ module DataUtils
         message = {
             :update_id => hashmap[:update_id],
             :message   => {
-                :message_id = hashmap[:message][:message_id],
-                :first_name = hashmap[:message][:from][:first_name],
-                :chat_id    = hashmap[:message][:chat][:id],
-                :text       = hashmap[:message][:text]
+                :message_id => hashmap[:message][:message_id],
+                :first_name => hashmap[:message][:from][:first_name],
+                :chat_id    => hashmap[:message][:chat][:id],
+                :text       => hashmap[:message][:text]
             }
         }
 
