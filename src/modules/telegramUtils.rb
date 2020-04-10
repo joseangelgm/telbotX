@@ -20,13 +20,3 @@ module TelegramUtils
     end
 
 end
-
-#task info
-@tasksInfo = {}
-#task order
-@tasksIds = []
-@mutex_tasks = Mutex.new
-
-@thread_sender   = nil
-@thread_receiver = nil
-@thread_updates  = nil
