@@ -22,6 +22,7 @@ end
 CONFIG_FOLDER  = "#{__dir__}/src/config/"
 BOT_CONFIG     = "#{CONFIG_FOLDER}bot.yaml"
 UPDATER_CONFIG = "#{CONFIG_FOLDER}updater.yaml"
+UPDATE_ID_FILE = "#{CONFIG_FOLDER}update_id.yaml"
 
 config = FileUtils::load_from_file BOT_CONFIG
 Logger::log_message :info, "Config for bot.yaml", config
@@ -29,10 +30,13 @@ Logger::log_message :info, "Config for bot.yaml", config
 updater_config = FileUtils::load_from_file UPDATER_CONFIG
 Logger::log_message :info, "Config for updater", updater_config
 
+update_id = FileUtils::load_from_file UPDATE_ID_FILE
+Logger::log_message :info, "Config update_id.yaml", update_id
+
 num_retry = 1
 launched  = false
 exception = nil
-updater = Updater.new("#{config[:bot_url]}#{config[:bot_token]}", updater_config[:ip], updater_config[:port])
+updater = Updater.new("#{config[:bot_url]}#{config[:bot_token]}", updater_config[:ip], updater_config[:port], update_id[:update_id])
 while !launched && num_retry <= updater_config[:retries]
     begin
         Logger::log_message :info, "Attemp #{num_retry} trying launch updater"
@@ -64,5 +68,8 @@ trap("SIGINT") do
     signal_thread.join
 end
 
-main_thread = Thread.new { updater.run }
-main_thread.join
+updater.run
+
+update_id = updater.update_id
+Logger::log_message :info, "Saving the last update_id", update_id
+FileUtils::save_into_file UPDATE_ID_FILE, {:update_id => update_id}
