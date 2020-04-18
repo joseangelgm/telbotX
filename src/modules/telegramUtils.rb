@@ -1,22 +1,25 @@
 module TelegramUtils
 
-    #return filter a telegram message to fields that we want
-    def telegram_message_to_sched(hashmap)
-        time = Time.at(hashmap[:message][:date])
-        message = {
-            :update_id => hashmap[:update_id],
-            :message   => {
-                :message_id => hashmap[:message][:message_id],
-                :first_name => hashmap[:message][:from][:first_name],
-                :chat_id    => hashmap[:message][:chat][:id],
-                :text       => hashmap[:message][:text],
-                :date       => "#{time.day}/#{time.month}/#{time.day} #{time.hour}:#{time.min}:#{time.sec}"
-            }
-        }
-        message
-    end
+    extend self
 
-    def telegram_message_to_updater(hashmap)
+    #parse telegram format of a message to telbotx format
+    def update_to_command(command_to_parse)
+
+        time = Time.at(command_to_parse[:message][:date])
+        array_command = command_to_parse[:message][:text].split(" ")
+
+        command = {
+            :update_id => command_to_parse[:update_id],
+            :message => {
+                :username => command_to_parse[:message][:chat][:username],
+                :chat_id  => command_to_parse[:message][:chat][:id],
+                :command => array_command[0],
+                :args => array_command[1..].join(" ")
+            },
+            :date => "#{time.day}/#{time.month}/#{time.day} #{time.hour}:#{time.min}:#{time.sec}"
+        }
+
+        command
     end
 
 end

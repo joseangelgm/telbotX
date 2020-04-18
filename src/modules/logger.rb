@@ -17,6 +17,8 @@ If the file doesn’t exist:
 
 module Logger
 
+    extend self
+
     MAX_SIZE = 1024000 #Kilobytes
     LOG_FILE = "/tmp/telbotX.log"
     TIME_FORMAT = "%d/%m/%Y %H:%M:%S"

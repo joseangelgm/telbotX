@@ -1,7 +1,12 @@
 module DataUtils
 
     def eval_to_hashmap(string)
-        return eval(string)
+        hash = nil
+        begin
+            hash = eval(string)
+        rescue => exception
+        end
+        hash
     end
 
     def eval_to_array(string)

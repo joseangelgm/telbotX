@@ -16,30 +16,22 @@ require 'open3'
 VERSION_NUMBER = "1.0"
 
 LOCATION_PID_FILES = "/tmp/"
-UPDATER_PID_FILE   = "#{LOCATION_PID_FILES}updaterTelbotX.pid"
-SCHED_PID_FILE     = "#{LOCATION_PID_FILES}schedTelbotX.pid"
-
-UPDATER_EXE = "#{__dir__}/updaterLauncher.rb"
-SCHED_EXE   = "#{__dir__}/schedLauncher.rb"
-
-UPDATER_TIMEOUT = 10 #seconds
-SCHED_TIMEOUT   = 15 #seconds
 
 UPDATER_ELEM = {
     :name     => "Updater",
-    :exe      => UPDATER_EXE,
-    :pid_file => UPDATER_PID_FILE,
-    :timeout  => UPDATER_TIMEOUT
+    :exe      => "#{__dir__}/src/launchers/updaterLauncher.rb",
+    :pid_file => "#{LOCATION_PID_FILES}updaterTelbotX.pid",
+    :timeout  => 10 #seconds
 }
 
 SCHED_ELEM = {
     :name     => "Sched",
-    :exe      => SCHED_EXE,
-    :pid_file => SCHED_PID_FILE,
-    :timeout  => SCHED_TIMEOUT
+    :exe      => "#{__dir__}/src/launchers/schedLauncher.rb",
+    :pid_file => "#{LOCATION_PID_FILES}schedTelbotX.pid",
+    :timeout  => 15 #seconds
 }
 
-# command
+# commands
 UPDATER = {
     :short => "-u",
     :large => "--updater",
@@ -139,7 +131,7 @@ def kill_process(pid_file)
             %x{rm #{pid_file}}
         else
             if !stderr.empty?
-                puts "There was a problem killin process #{pid_to_kill} #{stderr}"
+                puts "There was a problem killin process #{pid_to_kill}:\n #{stderr}"
                 exit 1
             end
         end
@@ -180,11 +172,13 @@ def launch_element(element, &block)
 
         if !response.nil?
             response = DataUtils::eval_to_hashmap response # transform response to hashmap
-            if response[:exit] != 0
-                puts "Failing launching #{element[:name]}...Shutting down"
-                exit 1
-            else
-                block.call if block_given?
+            if !response.nil? # eval failed
+                if response[:exit] != 0
+                    puts "Failing launching #{element[:name]}...Shutting down"
+                    exit 1
+                else
+                    block.call if block_given?
+                end
             end
         else
             puts "Failing launching #{element[:name]}...Shutting down"

@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-$LOAD_PATH << __dir__ + '/src/'
+$LOAD_PATH << __dir__ + '/../'
 
 STDIN.close #we only will write through the pipe
 
@@ -12,14 +12,16 @@ include FileUtils
 # nedeed libaries and code
 begin
     require 'yaml'
-    require 'updater'
+    require 'pieces/updater'
     Logger::log_message :info, "Libraries and code needed for updater were required properly..."
 rescue Exception => e
     Logger::log_message :error, "Libraries needed for updater could not be found...Sutting down:", e
     exit 1
 end
 
-CONFIG_FOLDER  = "#{__dir__}/src/config/"
+ROOT_PATH = "#{__dir__}/../"
+
+CONFIG_FOLDER  = "#{ROOT_PATH}/config/"
 BOT_CONFIG     = "#{CONFIG_FOLDER}bot.yaml"
 UPDATER_CONFIG = "#{CONFIG_FOLDER}updater.yaml"
 UPDATE_ID_FILE = "#{CONFIG_FOLDER}update_id.yaml"
@@ -59,17 +61,21 @@ end
 STDOUT.puts "{:exit => 0}"
 STDOUT.close
 
+=begin
 # SIGINT = 2
 trap("SIGINT") do
     signal_thread = Thread.new do
-        log_message(:info, "Receive SIGINT")
-        updater.poweroff_socket
+        log_message :info, "Receive SIGINT"
+        updater.poweroff_updater
     end
     signal_thread.join
 end
+=end
 
 updater.run
 
 update_id = updater.update_id
-Logger::log_message :info, "Saving the last update_id", update_id
+Logger::log_message :info, "Saving the last update_id: #{update_id}"
 FileUtils::save_into_file UPDATE_ID_FILE, {:update_id => update_id}
+Logger::log_message :info, "Update Launcher powered off"
+

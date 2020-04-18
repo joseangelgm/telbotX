@@ -1,5 +1,4 @@
 require 'socket'
-require 'base64'
 
 class ClientTCP
 
@@ -8,18 +7,17 @@ class ClientTCP
 
     def initialize(ip, port)
         @socket = TCPSocket.open(ip, port)
-        @ip   = @socket.addr[2]
+        @ip     = @socket.addr[2]
         @port   = @socket.addr[1]
     end
 
     def send_message(message)
-        message_encoded = Base64.encode64(message)
-        @socket.puts(message_encoded)
+        @socket.puts(message)
     end
 
     def read_message
-        message_encoded = @socket.gets
-        return Base64.decode64(message_encoded)
+        message = @socket.gets
+        return message
     end
 
     def close

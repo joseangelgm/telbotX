@@ -18,16 +18,16 @@ module QueryHTTP
         end
         if !res.nil?
             code = res.code
-            response = JSON.parse(res.body) if res != nil
-            response = symbolize_recursive(response)
-
-            return {
-                :status => code,
-                :body 	=> response
-            }
-        else
-            return nil
+            if !res.body.nil?
+                response = JSON.parse(res.body)
+                response = symbolize_recursive(response)
+                return {
+                    :status => code,
+                    :body 	=> response
+                }
+            end
         end
+        return nil
     end
 
     def symbolize_recursive(hash)
