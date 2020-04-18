@@ -1,5 +1,3 @@
-require 'timeout'
-
 require 'sockets/serverTCP'
 
 require 'modules/logger'
