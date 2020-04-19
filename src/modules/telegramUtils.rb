@@ -14,13 +14,11 @@ module TelegramUtils
                 :username => command_to_parse[:message][:chat][:username],
                 :chat_id  => command_to_parse[:message][:chat][:id],
                 :message_id => command_to_parse[:message][:message_id],
-                :command => array_command[0],
+                :command => array_command[0].tr('/',''),
                 :args => array_command[1..].join(" ")
             },
             :date => "#{time.day}/#{time.month}/#{time.day} #{time.hour}:#{time.min}:#{time.sec}"
         }
-
         command
     end
-
 end
