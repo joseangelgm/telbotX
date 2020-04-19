@@ -1,7 +1,5 @@
 #!/usr/bin/ruby
 
-require 'pry-byebug'
-
 $LOAD_PATH << __dir__ + '/src/'
 
 require 'modules/logger'

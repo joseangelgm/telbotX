@@ -59,6 +59,10 @@ class Sched
             @thread_process  = thread_process
             @thread_sender   = thread_sender
 
+            @thread_receiver.report_on_exception = false
+            @thread_process.report_on_exception  = false
+            @thread_sender.report_on_exception   = false
+
             #@thread_receiver.join
             #@thread_process.join
             @thread_sender.join
@@ -67,10 +71,10 @@ class Sched
                 @serverSocket.send_message @updater_client, {:poweroff => true}
             end
 
-        rescue Errno::EBADF => exception # accept is broken because socket.close
-            log_message :info, "Sched powered off with no updater"
-        rescue => exception
-            #log_message :info, "Exception SCHED", exception
+        rescue Errno::EBADF => exception # accept is broken because of socket.close
+            log_message :info, "Sched powered off with no updater", exception
+        rescue Exception => e
+            log_message :info, "Exception powering off sched", e
         ensure
             @serverSocket.close
         end
@@ -87,7 +91,6 @@ class Sched
         if !@updater_client.nil? and !@updater_client.closed?
             @serverSocket.send_message @updater_client, {:poweroff => true}
         else
-            # waiting for clients
             @serverSocket.close
         end
 
@@ -108,8 +111,8 @@ class Sched
             while !get_poweroff
                 message = @serverSocket.read_message @updater_client
                 command = eval_to_hashmap message
-                log_message :info, "Received from updater new message", command
                 update_id = command[:update_id]
+                log_message :info, "Received from updater new message with id #{update_id}"
                 @m_commands.synchronize do
                     @commands_ids << update_id
                     @commands_info[update_id] = command
@@ -132,8 +135,9 @@ class Sched
                 end
                 if !command.nil?
                     # execute command[:message][:command]
-                    # it is a reference of the original object. But we can edit it.
-                    # and will be edited the original one
+                    # it is a reference of the original object. But we can edit it
+                    # and will be edited the original because we are editing a nested
+                    # hashmap.
                     command[:response] = "Message received #{command[:message][:command]}"
                     log_message :info, "Message processed with id #{command[:update_id]}"
                     #control if the command is poweroff!!
@@ -154,16 +158,21 @@ class Sched
                 update_id = nil
                 @m_commands_prepared.synchronize do
                     update_id = @commands_prepared.first
+                    @commands_prepared.shift(1) if !update_id.nil?
                 end
                 if !update_id.nil?
                     command = nil
                     @m_commands.synchronize do
-                        command = @commands_info[update_id]
-                        @commands_info.delete(update_id)
-                        @commands_prepared.shift(1) if !command.nil?
+                        command = @commands_info.delete(update_id)
                     end
-                    log_message :info, "Command sended to updater", command
-                    @serverSocket.send_message @updater_client, command
+
+                    if !command.nil?
+                        @m_commands_prepared.synchronize do
+                            @commands_prepared.shift(1)
+                        end
+                        @serverSocket.send_message @updater_client, command
+                        log_message :info, "Command sended to updater with id #{update_id}"
+                    end
                 end
                 sleep 1
             end

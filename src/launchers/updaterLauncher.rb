@@ -72,10 +72,14 @@ trap("SIGINT") do
 end
 =end
 
-updater.run
+begin
+    updater.run
+rescue Exception => e
+ensure
+    update_id = updater.update_id
+    Logger::log_message :info, "Saving the last update_id: #{update_id}"
+    FileUtils::save_into_file UPDATE_ID_FILE, {:update_id => update_id}
+    Logger::log_message :info, "Update Launcher powered off"
+end
 
-update_id = updater.update_id
-Logger::log_message :info, "Saving the last update_id: #{update_id}"
-FileUtils::save_into_file UPDATE_ID_FILE, {:update_id => update_id}
-Logger::log_message :info, "Update Launcher powered off"
 

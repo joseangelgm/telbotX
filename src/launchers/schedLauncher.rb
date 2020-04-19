@@ -62,6 +62,9 @@ trap("SIGINT") do
     signal_thread.join
 end
 
-sched.run
-
-Logger::log_message :info, "Sched launcher powered off"
+begin
+    sched.run
+rescue Exception => e
+ensure
+    Logger::log_message :info, "Sched launcher powered off"
+end

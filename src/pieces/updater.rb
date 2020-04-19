@@ -57,6 +57,10 @@ class Updater
             @thread_sender   = thread_sender
             @thread_receiver = thread_receiver
 
+            @thread_updates.report_on_exception  = false
+            @thread_sender.report_on_exception   = false
+            @thread_receiver.report_on_exception = false
+
             # if updates ends, all thread must die. It doesn't make sense
             # keep sending information
             # also keep receiver to wait poweroff from sched
@@ -64,7 +68,7 @@ class Updater
             #@thread_sender.join
             @thread_receiver.join
         rescue => exception
-            log_message :debug, "Exception UPDATER", exception
+            log_message :info, "Exception UPDATER", exception
         ensure
             @clientSocket.close
         end
@@ -89,6 +93,10 @@ class Updater
     end
 
     # THREADS SECTION
+
+    # Improve thread_updates to request only when @updat_id
+    # and last_command_id are equals. It means that we have already
+    # process all commands.
     def thread_updates
         thread = Thread.new do
             while !get_poweroff do
@@ -137,7 +145,7 @@ class Updater
                 end
                 if !command.nil?
                     @clientSocket.send_message command
-                    log_message :info, "Command sended to sched with id #{command[:update_id]}", command
+                    log_message :info, "Command sended to sched with id #{command[:update_id]}"
                     sleep 2
                 end
             end
@@ -153,9 +161,9 @@ class Updater
                     response = eval_to_hashmap(response)
                     if response.key?(:poweroff) and response[:poweroff]
                         poweroff_updater
-                        log_message :info, "Powering off updater...", response
+                        log_message :info, "Powering off updater..."
                     else
-                        log_message :info, "Received response from sched with id #{response[:update_id]}", response
+                        log_message :info, "Received response from sched with id #{response[:update_id]}"
                         @update_id = response[:update_id]
                         sleep 2
                     end
