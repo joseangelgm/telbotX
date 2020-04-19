@@ -13,6 +13,7 @@ module TelegramUtils
             :message => {
                 :username => command_to_parse[:message][:chat][:username],
                 :chat_id  => command_to_parse[:message][:chat][:id],
+                :message_id => command_to_parse[:message][:message_id],
                 :command => array_command[0],
                 :args => array_command[1..].join(" ")
             },
