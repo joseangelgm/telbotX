@@ -61,17 +61,6 @@ end
 STDOUT.puts "{:exit => 0}"
 STDOUT.close
 
-=begin
-# SIGINT = 2
-trap("SIGINT") do
-    signal_thread = Thread.new do
-        log_message :info, "Receive SIGINT"
-        updater.poweroff_updater
-    end
-    signal_thread.join
-end
-=end
-
 begin
     updater.run
 rescue Exception => e
