@@ -13,15 +13,16 @@ class Updater
     include TelegramUtils
     include DataUtils
 
-    GET_UPDATES = "getUpdates"
-    private_constant :GET_UPDATES
-
     attr_reader :update_id
 
     public
 
     def initialize(bot_url, ip, port, update_id)
-        @bot_url  = "#{bot_url}/#{GET_UPDATES}"
+        @bot_methods = {
+            :updates => "getUpdates",
+            :send_message  => "sendMessage"
+        }
+        @bot_url  = bot_url
 
         @clientSocket = nil
         @ip = ip
@@ -101,15 +102,15 @@ class Updater
         thread = Thread.new do
             while !get_poweroff do
                 #get updates
-                bot_message = make_query(@bot_url, :post, {})
+                bot_message = make_query("#{@bot_url}/#{@bot_methods[:updates]}", :post, {})
                 if bot_message.nil?
-                    log_message :error, "#{GET_UPDATES}: retrieve null...retrying"
+                    log_message :error, "#{@bot_methods[:updates]}: retrieve null...retrying"
                 elsif bot_message[:status] != "200" #success http = 200
-                    log_message :error, "#{GET_UPDATES}: http status is #{bot_message[:status]}...retrying"
+                    log_message :error, "#{@bot_methods[:updates]}: http status is #{bot_message[:status]}...retrying"
                 elsif !bot_message[:body][:ok]
-                    log_message :error, "#{GET_UPDATES}: telegram ok is false...retrying"
+                    log_message :error, "#{@bot_methods[:updates]}: telegram ok is false...retrying"
                 else
-                    log_message :info, "#{GET_UPDATES}: processing commands..."
+                    log_message :info, "#{@bot_methods[:updates]}: processing commands..."
                     commands = bot_message[:body][:result]
                     new_commands = 0
                     commands.each do |command|
@@ -123,7 +124,7 @@ class Updater
                             @last_command_id = update_id
                         end
                     end
-                    log_message :info, "#{GET_UPDATES}: new commands = #{new_commands}. Total commands to process #{@command_ids.count}"
+                    log_message :info, "#{@bot_methods[:updates]}: new commands = #{new_commands}. Total commands to process #{@command_ids.count}"
                 end
                 sleep 10
             end
@@ -164,6 +165,11 @@ class Updater
                         log_message :info, "Powering off updater..."
                     else
                         log_message :info, "Received response from sched with id #{response[:update_id]}"
+                        result = make_query("#{@bot_url}/#{@bot_methods[:send_message]}", :post, {
+                            :chat_id => response[:message][:chat_id],
+                            :text => response[:response]
+                        })
+                        log_message :debug, "SEND MESSAGE!!", result
                         @update_id = response[:update_id]
                         sleep 2
                     end
