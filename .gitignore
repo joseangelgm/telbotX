@@ -1,4 +1,5 @@
 telbotX.log
 src/config/bot.yaml
 src/config/update_id.yaml
+src/config/admins.yaml
 message.example
