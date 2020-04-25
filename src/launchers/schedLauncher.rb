@@ -52,7 +52,12 @@ if !launched
 end
 
 STDOUT.puts "{:exit => 0}"
-STDOUT.close
+STDOUT.flush
+#STDOUT.close
+=begin
+sched has to execute the commands by %x. Since %x use the standard output,
+We dont have to close STDOUT, use flush to let the pipe know.
+=end
 
 trap("SIGINT") do
     signal_thread = Thread.new do

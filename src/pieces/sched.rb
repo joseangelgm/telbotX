@@ -138,7 +138,7 @@ class Sched
                     # it is a reference of the original object. But we can edit it
                     # and will be edited the original because we are editing a nested
                     # hashmap.
-                    command[:response] = "Message received #{command[:message][:command]}"
+                    command[:response] = %x("#{__dir__}/../commands/time")
                     log_message :info, "Message processed with id #{command[:update_id]}"
                     #control if the command is poweroff!!
                     update_id = command[:update_id]

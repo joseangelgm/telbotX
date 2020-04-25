@@ -69,7 +69,7 @@ class Updater
             #@thread_sender.join
             @thread_receiver.join
         rescue => exception
-            log_message :info, "Exception UPDATER", exception
+            log_message :info, "Exception Updater powering off...Not important", exception
         ensure
             @clientSocket.close
         end
@@ -169,7 +169,6 @@ class Updater
                             :chat_id => response[:message][:chat_id],
                             :text => response[:response]
                         })
-                        log_message :debug, "SEND MESSAGE!!", result
                         @update_id = response[:update_id]
                         sleep 2
                     end
