@@ -6,10 +6,11 @@ require 'modules/queryHTTP'
 require 'modules/telegramUtils'
 require 'modules/dataUtils'
 
+include QueryHTTP
+
 class Updater
 
     include Logger
-    include QueryHTTP
     include TelegramUtils
     include DataUtils
 
@@ -164,12 +165,23 @@ class Updater
                         poweroff_updater
                         log_message :info, "Powering off updater..."
                     else
-                        log_message :info, "Received response from sched with id #{response[:update_id]}"
-                        result = make_query("#{@bot_url}/#{@bot_methods[:send_message]}", :post, {
-                            :chat_id => response[:message][:chat_id],
-                            :text => response[:response]
-                        })
-                        @update_id = response[:update_id]
+                        if response.key?(:auto)
+                            log_message :info, "Received auto command with id #{response[:update_id]}"
+                            chat_ids = response[:message][:chat_id]
+                            chat_ids.each do |elem|
+                                make_query("#{@bot_url}/#{@bot_methods[:send_message]}", :post, {
+                                    :chat_id => elem,
+                                    :text => response[:response]
+                                })
+                            end
+                        else
+                            log_message :info, "Received response from sched with id #{response[:update_id]}"
+                            result = make_query("#{@bot_url}/#{@bot_methods[:send_message]}", :post, {
+                                :chat_id => response[:message][:chat_id],
+                                :text => response[:response]
+                            })
+                            @update_id = response[:update_id]
+                        end
                         sleep 2
                     end
                 end

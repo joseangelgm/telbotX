@@ -1,13 +1,22 @@
+require 'securerandom'
+
 require 'sockets/serverTCP'
 
 require 'modules/logger'
 require 'modules/dataUtils'
+require 'modules/telegramUtils'
+require 'modules/fileUtils'
 
+require 'commands/commands'
+
+require 'pieces/adminsManager'
+
+include DataUtils
+include TelegramUtils
 
 class Sched
 
     include Logger
-    include DataUtils
 
     public
 
@@ -32,6 +41,9 @@ class Sched
         @thread_receiver = nil
         @thread_process  = nil
         @thread_sender   = nil
+
+        @command_exe = Commands.new
+        @admins = AdminsManager.new
 
     end
 
@@ -62,6 +74,16 @@ class Sched
             @thread_receiver.report_on_exception = false
             @thread_process.report_on_exception  = false
             @thread_sender.report_on_exception   = false
+
+            threads_auto_commands = []
+
+            auto_commands = FileUtils::load_from_file("#{__dir__}/../commands/commands.yaml")
+            log_message :debug, "Auto commands", auto_commands
+            auto_commands.each do |command, attrs|
+                thread = thread_automatically(command, attrs)
+                thread.report_on_exception = false
+                threads_auto_commands << thread
+            end
 
             #@thread_receiver.join
             #@thread_process.join
@@ -110,7 +132,8 @@ class Sched
         thread = Thread.new do
             while !get_poweroff
                 message = @serverSocket.read_message @updater_client
-                command = eval_to_hashmap message
+                command = DataUtils::eval_to_hashmap message
+                @admins.create_or_update_info(command[:message][:username], command[:message][:chat_id])
                 update_id = command[:update_id]
                 log_message :info, "Received from updater new message with id #{update_id}"
                 @m_commands.synchronize do
@@ -137,9 +160,8 @@ class Sched
                     # execute command[:message][:command]
                     # it is a reference of the original object. But we can edit it
                     # and will be edited the original because we are editing a nested
-                    # hashmap.
-                    command[:response] = %x("#{__dir__}/../commands/time")
-                    log_message :info, "Message processed with id #{command[:update_id]}"
+                    # hashmap. Should be cloned.
+                    @command_exe.execute_command(command)
                     #control if the command is poweroff!!
                     update_id = command[:update_id]
                     @m_commands_prepared.synchronize do
@@ -177,6 +199,30 @@ class Sched
                 sleep 1
             end
         end
+    end
+
+    def thread_automatically(command, attrs)
+        thread = Thread.new do
+            command_struct = TelegramUtils::build_telbotx_auto_command(command, attrs)
+            while !get_poweroff
+                ids = @admins.get_all_chats_ids
+                if !ids.nil?
+                    command_struct[:update_id] = SecureRandom.uuid
+                    command_struct[:message][:chat_id] = @admins.get_all_chats_ids
+                    @command_exe.execute_command(command_struct)
+                    update_id = command_struct[:update_id]
+                    @m_commands.synchronize do
+                        @commands_info[update_id] = command_struct
+                    end
+                    @m_commands_prepared.synchronize do
+                        @commands_prepared << update_id
+                    end
+                    log_message :info, "Create auto command with id #{update_id}", command_struct
+                    sleep attrs[:interval]
+                end
+            end
+        end
+        thread
     end
 
 end

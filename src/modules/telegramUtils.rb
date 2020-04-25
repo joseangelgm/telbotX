@@ -21,4 +21,15 @@ module TelegramUtils
         }
         command
     end
+
+    def build_telbotx_auto_command(command, attrs)
+        hash = {
+            :auto => true,
+            :message => {
+                :command => command.to_s,
+                :args => attrs[:args]
+            }
+        }
+        hash
+    end
 end

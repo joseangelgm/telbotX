@@ -30,7 +30,7 @@ module Logger
 
             message_hash = {
                 :time          => Time.now.strftime(TIME_FORMAT),
-                :caller_object => caller.first.scan(/\/\w+/).last.tr('/',''),
+                :caller_object => caller.first.scan(/\/\w+/).last.tr('/','').capitalize,
                 :mode          => mode,
                 :title         => title,
                 :message       => format_message(message)
