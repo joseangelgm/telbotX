@@ -64,7 +64,7 @@ module Logger
         case message
         when Hash;
             message.each do |k, v|
-                message_formatted << "\t" << k.to_s.ljust(15) << " -> " << v.to_s << "\n"
+                message_formatted << "\t" << k.to_s.ljust(15) << " => " << v.to_s << "\n"
             end
         when Array;
             message.each do |elem|
@@ -75,7 +75,7 @@ module Logger
         when nil;
             message_formatted = ""
         else;
-            message_formatted = "#{message}\n"
+            message_formatted = "#{message.to_s}\n"
         end
         message_formatted
     end

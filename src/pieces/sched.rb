@@ -1,22 +1,19 @@
 require 'securerandom'
 
 require 'sockets/serverTCP'
+require 'commands/commands'
+require 'pieces/adminsManager'
 
 require 'modules/logger'
 require 'modules/dataUtils'
 require 'modules/telegramUtils'
 require 'modules/fileUtils'
 
-require 'commands/commands'
-
-require 'pieces/adminsManager'
-
 include DataUtils
 include TelegramUtils
+include Logger
 
 class Sched
-
-    include Logger
 
     public
 
@@ -50,17 +47,17 @@ class Sched
     def create_socket
         if @serverSocket.nil?
             @serverSocket = ServerTCP.new(@ip, @port)
-            log_message :info, "Socket created", {:ip => @ip, :port => @port}
+            Logger::log_message :info, "Socket created", {:ip => @ip, :port => @port}
         end
     end
 
     def run
         begin
-            log_message :info, "Waiting for Updater"
+            Logger::log_message :info, "Waiting for Updater"
             #wait for updater to connect. It is only allow to run 1 updater at a time.
             @updater_client = @serverSocket.accept
             sock_domain, remote_port, remote_hostname, remote_ip = @updater_client.peeraddr
-            log_message :info, "Updater connected", {
+            Logger::log_message :info, "Updater connected", {
                 :sock_domain => sock_domain,
                 :remote_port => remote_port,
                 :remote_hostname => remote_hostname,
@@ -78,7 +75,7 @@ class Sched
             threads_auto_commands = []
 
             auto_commands = FileUtils::load_from_file("#{__dir__}/../commands/commands.yaml")
-            log_message :debug, "Auto commands", auto_commands
+            Logger::log_message :debug, "Auto commands", auto_commands
             auto_commands.each do |command, attrs|
                 thread = thread_automatically(command, attrs)
                 thread.report_on_exception = false
@@ -94,16 +91,12 @@ class Sched
             end
 
         rescue Errno::EBADF => exception # accept is broken because of socket.close
-            log_message :info, "Sched powered off with no updater", exception
+            Logger::log_message :info, "Sched powered off with no updater", exception
         rescue Exception => e
-            log_message :info, "Exception powering off sched", e
+            Logger::log_message :info, "Exception powering off sched", e
         ensure
             @serverSocket.close
         end
-
-        #@serverSocket.send_message @updater_client, {:poweroff => true}
-
-        #@serverSocket.close
     end
 
     def poweroff_sched
@@ -131,14 +124,18 @@ class Sched
     def thread_receiver
         thread = Thread.new do
             while !get_poweroff
-                message = @serverSocket.read_message @updater_client
-                command = DataUtils::eval_to_hashmap message
-                @admins.create_or_update_info(command[:message][:username], command[:message][:chat_id])
-                update_id = command[:update_id]
-                log_message :info, "Received from updater new message with id #{update_id}"
-                @m_commands.synchronize do
-                    @commands_ids << update_id
-                    @commands_info[update_id] = command
+                begin
+                    message = @serverSocket.read_message @updater_client
+                    command = DataUtils::eval_to_hashmap message
+                    @admins.create_or_update_info(command[:message][:username], command[:message][:chat_id])
+                    update_id = command[:update_id]
+                    Logger::log_message :info, "Received from updater new message with id #{update_id}"
+                    @m_commands.synchronize do
+                        @commands_ids << update_id
+                        @commands_info[update_id] = command
+                    end
+                rescue Exception => e
+                    Logger::log_message :info, "Exception thread_receiver", e
                 end
             end
         end
@@ -148,26 +145,30 @@ class Sched
     def thread_process
         thread = Thread.new do
             while !get_poweroff
-                command = nil
-                @m_commands.synchronize do
-                    update_id = @commands_ids.first
-                    if !update_id.nil?
-                        command = @commands_info[update_id]
-                        @commands_ids.shift(1) if !command.nil?
+                begin
+                    command = nil
+                    @m_commands.synchronize do
+                        update_id = @commands_ids.first
+                        if !update_id.nil?
+                            command = @commands_info[update_id]
+                            @commands_ids.shift(1) if !command.nil?
+                        end
                     end
-                end
-                if !command.nil?
-                    # execute command[:message][:command]
-                    # it is a reference of the original object. But we can edit it
-                    # and will be edited the original because we are editing a nested
-                    # hashmap. Should be cloned.
-                    @command_exe.execute_command(command)
-                    #control if the command is poweroff!!
-                    update_id = command[:update_id]
-                    @m_commands_prepared.synchronize do
-                        @commands_prepared << update_id
+                    if !command.nil?
+                        # execute command[:message][:command]
+                        # it is a reference of the original object. But we can edit it
+                        # and will be edited the original because we are editing a nested
+                        # hashmap. Should be cloned.
+                        @command_exe.execute_command(command)
+                        #control if the command is poweroff!!
+                        update_id = command[:update_id]
+                        @m_commands_prepared.synchronize do
+                            @commands_prepared << update_id
+                        end
+                        sleep 2
                     end
-                    sleep 2
+                rescue Exception => e
+                    Logger::log_message :info, "Exception thread_process", e
                 end
             end
         end
@@ -177,52 +178,59 @@ class Sched
     def thread_sender
         thread = Thread.new do
             while !get_poweroff
-                update_id = nil
-                @m_commands_prepared.synchronize do
-                    update_id = @commands_prepared.first
-                    @commands_prepared.shift(1) if !update_id.nil?
-                end
-                if !update_id.nil?
-                    command = nil
-                    @m_commands.synchronize do
-                        command = @commands_info.delete(update_id)
-                    end
-
-                    if !command.nil?
-                        @m_commands_prepared.synchronize do
-                            @commands_prepared.shift(1)
-                        end
-                        @serverSocket.send_message @updater_client, command
-                        log_message :info, "Command sended to updater with id #{update_id}"
-                    end
-                end
-                sleep 1
-            end
-        end
-    end
-
-    def thread_automatically(command, attrs)
-        thread = Thread.new do
-            command_struct = TelegramUtils::build_telbotx_auto_command(command, attrs)
-            while !get_poweroff
-                ids = @admins.get_all_chats_ids
-                if !ids.nil? && !ids.empty?
-                    command_struct[:update_id] = SecureRandom.uuid
-                    command_struct[:message][:chat_id] = @admins.get_all_chats_ids
-                    @command_exe.execute_command(command_struct)
-                    update_id = command_struct[:update_id]
-                    @m_commands.synchronize do
-                        @commands_info[update_id] = command_struct
-                    end
+                begin
+                    update_id = nil
                     @m_commands_prepared.synchronize do
-                        @commands_prepared << update_id
+                        update_id = @commands_prepared.first
+                        @commands_prepared.shift(1) if !update_id.nil?
                     end
-                    log_message :info, "Create auto command with id #{update_id}", command_struct
-                    sleep attrs[:interval]
+                    if !update_id.nil?
+                        command = nil
+                        @m_commands.synchronize do
+                            command = @commands_info.delete(update_id)
+                        end
+                        if !command.nil?
+                            @m_commands_prepared.synchronize do
+                                @commands_prepared.shift(1)
+                            end
+                            @serverSocket.send_message @updater_client, command
+                            Logger::log_message :info, "Command sended to updater with id #{update_id}"
+                        end
+                        sleep 2
+                    end
+                rescue Exception => e
+                    Logger::log_message :info, "Exception thread_sender", e
                 end
             end
         end
         thread
     end
 
+    def thread_automatically(command, attrs)
+        thread = Thread.new do
+            command_struct = TelegramUtils::build_telbotx_auto_command(command, attrs)
+            while !get_poweroff
+                begin
+                    ids = @admins.get_all_chats_ids
+                    if !ids.nil? && !ids.empty?
+                        command_struct[:update_id] = SecureRandom.uuid
+                        command_struct[:message][:chat_id] = @admins.get_all_chats_ids
+                        @command_exe.execute_command(command_struct)
+                        update_id = command_struct[:update_id]
+                        @m_commands.synchronize do
+                            @commands_info[update_id] = command_struct
+                        end
+                        @m_commands_prepared.synchronize do
+                            @commands_prepared << update_id
+                        end
+                        Logger::log_message :info, "Create auto command with id #{update_id}", command_struct
+                        sleep attrs[:interval]
+                    end
+                rescue Exception => e
+                    Logger::log_message :info, "Exception thread_automatically", e
+                end
+            end
+        end
+        thread
+    end
 end

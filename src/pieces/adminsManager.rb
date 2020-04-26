@@ -1,10 +1,10 @@
 require 'modules/logger'
 require 'modules/fileUtils'
+
 include FileUtils
+include Logger
 
 class AdminsManager
-
-    include Logger
 
     def initialize
         # user -> chat_id
@@ -17,7 +17,7 @@ class AdminsManager
         @admins_m.synchronize do
             if @admins_users.include? user
                 @admins[user.to_sym] = chat_id
-                log_message :info, "Admin registered with name #{user} and chat_id #{chat_id}"
+                Logger::log_message :info, "Admin registered with name #{user} and chat_id #{chat_id}"
             end
         end
     end
