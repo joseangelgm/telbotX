@@ -1,8 +1,7 @@
 require 'modules/logger'
+include Logger
 
 class Commands
-
-    include Logger
 
     def initialize()
         @path = "#{__dir__}/executables/"
@@ -12,7 +11,7 @@ class Commands
     # this method will create the response within hashmap command. Change that.w
     def execute_command(command)
         path_exe = "#{@path}#{command[:message][:command]}"
-        log_message :info, "Executing command #{command[:update_id]}", {
+        Logger::log_message :info, "Executing command #{command[:update_id]}", {
             :update_id => command[:update_id],
             :path => path_exe,
             :command => command[:message][:command],
@@ -24,11 +23,15 @@ class Commands
             if $?.exitstatus != 0
                 output = "There was a problem executing the command with id #{command[:update_id]}"
             end
-            command[:response] = output
+            if command.key?(:auto)
+                command[:response] = "Auto: #{output}"
+            else
+                command[:response] = output
+            end
         else
-            log_message :info, "Command #{command[:update_id]} doesn't exists"
+            Logger::log_message :info, "Command #{command[:update_id]} doesn't exists"
             command[:response] = "The command #{command[:message][:command]} doesn't exists"
         end
-        log_message :info, "Response for #{command[:update_id]}: #{command[:response]}"
+        Logger::log_message :info, "Response for #{command[:update_id]}: #{command[:response]}"
     end
 end

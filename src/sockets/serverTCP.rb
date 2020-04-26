@@ -12,7 +12,6 @@ class ServerTCP
     end
 
     def send_message(client, message)
-        #encrypt info
         client.puts(message)
     end
 
@@ -21,7 +20,6 @@ class ServerTCP
         return message
     end
 
-    #return a client
     def accept
         return @socket.accept
     end

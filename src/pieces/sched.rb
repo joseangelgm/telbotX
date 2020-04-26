@@ -206,7 +206,7 @@ class Sched
             command_struct = TelegramUtils::build_telbotx_auto_command(command, attrs)
             while !get_poweroff
                 ids = @admins.get_all_chats_ids
-                if !ids.nil?
+                if !ids.nil? && !ids.empty?
                     command_struct[:update_id] = SecureRandom.uuid
                     command_struct[:message][:chat_id] = @admins.get_all_chats_ids
                     @command_exe.execute_command(command_struct)
