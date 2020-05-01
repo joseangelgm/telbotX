@@ -18,7 +18,10 @@ class Commands
             :args => command[:message][:args]
         }
         if File.file? path_exe
-            path_exe << " #{command[:message][:args]}".gsub!(/\s$/, '') # remove blank spaces if we dont have any argument
+            if !command[:message][:args].nil?
+                path_exe << " #{command[:message][:args]}"
+                path_exe.gsub!(/\s$/, '')# remove blank spaces if we dont have any argument
+            end
             output = %x("#{path_exe}")
             if $?.exitstatus != 0
                 output = "There was a problem executing the command with id #{command[:update_id]}"

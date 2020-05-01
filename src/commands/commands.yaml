@@ -1,4 +1,4 @@
 ---
 :time:
   :interval: 5
-
+  :args: "-d -t"

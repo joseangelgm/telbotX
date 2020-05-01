@@ -129,7 +129,7 @@ class Updater
                     end
                     sleep 10
                 rescue Exception => e
-                    Logger::log_message :info, "Exception thread_updates", e
+                    #Logger::log_message :info, "Exception thread_updates", e
                 end
             end
         end
@@ -155,7 +155,7 @@ class Updater
                         sleep 2
                     end
                 rescue Exception => e
-                    Logger::log_message :info, "Exception thread_sender", e
+                    #Logger::log_message :info, "Exception thread_sender", e
                 end
             end
         end
@@ -194,7 +194,7 @@ class Updater
                         end
                     end
                 rescue Exception => e
-                    Logger::log_message :info, "Exception thread_receiver", e
+                    #Logger::log_message :info, "Exception thread_receiver", e
                 end
             end
         end

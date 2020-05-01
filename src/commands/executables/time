@@ -1,4 +1,80 @@
 #!/usr/bin/env ruby
 
-puts Time.now
+require 'optparse'
+
+DEFAULT_FORMAT = "%c"
+DATE_FORMAT = "%d/%m/%Y"
+TIME_FORMAT = "%H:%M:%S"
+
+DATE = {
+    :short => "-d",
+    :large => "--date",
+    :help  => "Display date in format"
+}
+
+TIME = {
+    :short => "-t",
+    :large => "--time",
+    :help  => "Display time in format"
+}
+
+HELP = {
+    :short => "-h",
+    :large => "--help",
+    :help  => "Display this help",
+}
+
+def format_param_structure(params)
+
+    array_params = []
+
+    case params
+    when Hash;
+        params.each do |k, v|
+            array_params << v
+        end
+    when Array;
+        array_params = params
+    else
+        puts "Error creating the parser."
+        exit 1
+    end
+    array_params
+end
+
+def command(optparse, param, &block)
+    # the * character is used to convert an array to argument list of a function
+    optparse.on(*format_param_structure(param), block)
+end
+
+options = {}
+optparse = OptionParser.new
+
+command optparse, DATE do
+    options[:date] = true
+end
+
+command optparse, TIME do
+    options[:time] = true
+end
+
+command optparse, HELP do
+    puts optparse
+    exit 0
+end
+
+optparse.parse! ARGV
+
+time = Time.new
+time_format = DEFAULT_FORMAT
+
+if options[:date]
+    time_format = DATE_FORMAT
+end
+
+if options[:time]
+    time_format << " #{TIME_FORMAT}"
+end
+
+puts time.strftime(time_format)
 exit 0

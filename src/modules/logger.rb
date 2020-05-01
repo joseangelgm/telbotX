@@ -71,7 +71,7 @@ module Logger
                 message_formatted << "\t#{elem}\n"
             end
         when Exception;
-            message_formatted = "\tException type: #{message.class} => #{message.message}\n"
+            message_formatted = "\tException type: #{message.class} => #{message.message}\n#{message.backtrace}\n"
         when nil;
             message_formatted = ""
         else;

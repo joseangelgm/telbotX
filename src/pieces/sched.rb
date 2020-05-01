@@ -135,7 +135,7 @@ class Sched
                         @commands_info[update_id] = command
                     end
                 rescue Exception => e
-                    Logger::log_message :info, "Exception thread_receiver", e
+                    #Logger::log_message :info, "Exception thread_receiver", e
                 end
             end
         end
@@ -168,7 +168,7 @@ class Sched
                         sleep 2
                     end
                 rescue Exception => e
-                    Logger::log_message :info, "Exception thread_process", e
+                    #Logger::log_message :info, "Exception thread_process", e
                 end
             end
         end
@@ -199,7 +199,7 @@ class Sched
                         sleep 2
                     end
                 rescue Exception => e
-                    Logger::log_message :info, "Exception thread_sender", e
+                    #Logger::log_message :info, "Exception thread_sender", e
                 end
             end
         end
@@ -211,6 +211,7 @@ class Sched
             command_struct = TelegramUtils::build_telbotx_auto_command(command, attrs)
             while !get_poweroff
                 begin
+                    sleep 2
                     ids = @admins.get_all_chats_ids
                     if !ids.nil? && !ids.empty?
                         command_struct[:update_id] = SecureRandom.uuid
@@ -227,7 +228,7 @@ class Sched
                         sleep attrs[:interval]
                     end
                 rescue Exception => e
-                    Logger::log_message :info, "Exception thread_automatically", e
+                    #Logger::log_message :info, "Exception thread_automatically", e
                 end
             end
         end
